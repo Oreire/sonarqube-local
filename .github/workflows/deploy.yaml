@@ -41,7 +41,7 @@ jobs:
       - name: Expose SonarQube Service
         shell: pwsh
         run: |
-          kubectl port-forward service/sonarqube -n sonarqube 9000:9000
+          kubectl port-forward service/sonarqube-service -n sonarqube 9000:9000
 
       # Step 5: Install Sonar Scanner (Windows) with folder cleanup
       - name: Install Sonar Scanner
