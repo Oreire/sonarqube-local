@@ -33,11 +33,11 @@ jobs:
           kubectl apply -f Kube/sonar.yaml
           kubectl rollout status deployment/sonarqube -n sonarqube --timeout=300s
 
-    #   - name: Wait for SonarQube Service to be ready
-    #     shell: pwsh
-    #     run: |
-    #       kubectl wait --for=condition=available --timeout=300s deployment/sonarqube -n sonarqube
-        
+      - name: Start SonarQube Port-Forward
+        shell: pwsh
+        run: |
+          Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 9000:9000"
+
       # Step 5: Install Sonar Scanner (Windows) with folder cleanup
       - name: Install Sonar Scanner
         shell: pwsh
@@ -72,5 +72,16 @@ jobs:
     #       sonar-scanner.bat `
     #         -Dsonar.projectKey=my-project `
     #         -Dsonar.sources=. `
-    #         -Dsonar.host.url=http://sonarqube.local `
+    #         -Dsonar.host.url=http://localhost:9000 `
+    #         -Dsonar.login=$env:SONAR_TOKEN
+
+    #   - name: Run SonarQube Scan
+    #     shell: pwsh
+    #     env:
+    #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    #     run: |
+    #       sonar-scanner `
+    #         -Dsonar.projectKey=my-project `
+    #         -Dsonar.sources=. `
+    #         -Dsonar.host.url=http://localhost:9000 `
     #         -Dsonar.login=$env:SONAR_TOKEN
