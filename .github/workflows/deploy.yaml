@@ -33,15 +33,24 @@ jobs:
           kubectl apply -f Kube/sonar.yaml
           kubectl rollout status deployment/sonarqube -n sonarqube --timeout=300s
 
-      # Step 5: Install Sonar Scanner (Windows)
+      # Step 5: Install Sonar Scanner (Windows) with folder cleanup
       - name: Install Sonar Scanner
         shell: pwsh
         run: |
           $url = "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-windows.zip"
           $zipPath = "$env:USERPROFILE\sonar-scanner.zip"
+          $extractPath = "$env:USERPROFILE\sonar-scanner"
+
+          # Remove previous installation if it exists
+          if (Test-Path $extractPath) {
+              Remove-Item -Recurse -Force $extractPath
+          }
+
           Invoke-WebRequest -Uri $url -OutFile $zipPath
-          Expand-Archive -LiteralPath $zipPath -DestinationPath "$env:USERPROFILE\sonar-scanner"
-          echo "$env:USERPROFILE\sonar-scanner\sonar-scanner-5.0.1.3006-windows\bin" >> $env:GITHUB_PATH
+          Expand-Archive -LiteralPath $zipPath -DestinationPath $extractPath -Force
+
+          # Add to PATH for this workflow
+          echo "$extractPath\sonar-scanner-5.0.1.3006-windows\bin" >> $env:GITHUB_PATH
 
       # Step 6: Run SonarQube Scan with Token Pre-flight Check
       - name: Run SonarQube Scan
@@ -54,7 +63,7 @@ jobs:
             exit 1
           }
 
-          # Run SonarQube scan
+          # Run the scan
           sonar-scanner.bat `
             -Dsonar.projectKey=my-project `
             -Dsonar.sources=. `
