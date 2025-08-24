@@ -1,0 +1,22 @@
+name: SonarQube CI
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  sonar-scan:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run SonarQube scan
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          sonar-scanner \
+            -Dsonar.projectKey=my-project \
+            -Dsonar.sources=. \
+            -Dsonar.host.url=http://localhost:30900 \
+            -Dsonar.login=$SONAR_TOKEN
