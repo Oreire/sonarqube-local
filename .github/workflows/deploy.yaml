@@ -1,22 +1,54 @@
-name: SonarQube CI
+name: SonarQube CI/CD
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  sonar-scan:
+  deploy-and-scan:
     runs-on: self-hosted
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Run SonarQube scan
+      # Step 1: Setup kubectl
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      # Step 2: Configure Kubernetes context for Docker Desktop
+      - name: Configure Kubernetes Context
+        run: |
+          kubectl config use-context docker-desktop
+          kubectl cluster-info
+
+      # Step 3: Deploy SonarQube (apply manifests)
+      - name: Deploy SonarQube
+        run: |
+          kubectl apply -f Kube/sonar.yaml
+          kubectl rollout status deployment/sonarqube -n sonarqube --timeout=180s
+
+      # Step 4: Install Sonar Scanner
+      - name: Install Sonar Scanner
+        run: |
+          wget -qO- https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip | bsdtar -xvf- -C $HOME
+          echo "$HOME/sonar-scanner-5.0.1.3006-linux/bin" >> $GITHUB_PATH
+
+      # Step 5: Run Sonar Scan
+      - name: Run SonarQube Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
+          # Get the service NodePort to construct URL dynamically
+          SONAR_PORT=$(kubectl get svc sonarqube-service -n sonarqube -o jsonpath='{.spec.ports[0].nodePort}')
+          SONAR_HOST="http://localhost:$SONAR_PORT"
+          
+          echo "SonarQube available at $SONAR_HOST"
+          
           sonar-scanner \
             -Dsonar.projectKey=my-project \
             -Dsonar.sources=. \
-            -Dsonar.host.url=http://localhost:30900 \
+            -Dsonar.host.url=$SONAR_HOST \
             -Dsonar.login=$SONAR_TOKEN

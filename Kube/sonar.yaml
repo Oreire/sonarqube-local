@@ -6,13 +6,26 @@ metadata:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: sonarqube-pvc
+  name: sonarqube-data-pvc
   namespace: sonarqube
 spec:
-  accessModes: [ReadWriteOnce]
+  accessModes:
+    - ReadWriteOnce
   resources:
     requests:
       storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarqube-extensions-pvc
+  namespace: sonarqube
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
 ---
 apiVersion: v1
 kind: Service
@@ -46,7 +59,7 @@ spec:
       automountServiceAccountToken: false
       containers:
         - name: sonarqube
-          image: sonarqube:community
+          image: sonarqube:10.4-community   # ✅ stable community tag
           ports:
             - containerPort: 9000
           env:
@@ -55,16 +68,44 @@ spec:
           resources:
             requests:
               cpu: "500m"
-              memory: "1Gi"
+              memory: "2Gi"
               ephemeral-storage: "1Gi"
             limits:
-              cpu: "1"
-              memory: "2Gi"
+              cpu: "2"
+              memory: "4Gi"
               ephemeral-storage: "2Gi"
           volumeMounts:
             - name: sonarqube-data
               mountPath: /opt/sonarqube/data
+            - name: sonarqube-extensions
+              mountPath: /opt/sonarqube/extensions
       volumes:
         - name: sonarqube-data
           persistentVolumeClaim:
-            claimName: sonarqube-pvc
+            claimName: sonarqube-data-pvc
+        - name: sonarqube-extensions
+          persistentVolumeClaim:
+            claimName: sonarqube-extensions-pvc
+
+# Ingress resource for SonarQube
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sonarqube-ingress
+  namespace: sonarqube
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: sonarqube.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sonarqube-service
+                port:
+                  number: 9000
