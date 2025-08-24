@@ -21,36 +21,42 @@ jobs:
 
       # Step 3: Configure Kubernetes context (Docker Desktop)
       - name: Configure Kubernetes Context
+        shell: pwsh
         run: |
           kubectl config use-context docker-desktop
           kubectl cluster-info
 
       # Step 4: Deploy SonarQube with Ingress
       - name: Deploy SonarQube
+        shell: pwsh
         run: |
-          kubectl apply -f k8s/sonarqube.yaml
+          kubectl apply -f Kube/sonar.yaml
           kubectl rollout status deployment/sonarqube -n sonarqube --timeout=300s
 
-      # Step 5: Install Sonar Scanner
+      # Step 5: Install Sonar Scanner (Windows)
       - name: Install Sonar Scanner
+        shell: pwsh
         run: |
-          wget -qO- https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip | bsdtar -xvf- -C $HOME
-          echo "$HOME/sonar-scanner-5.0.1.3006-linux/bin" >> $GITHUB_PATH
+          $url = "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-windows.zip"
+          $zipPath = "$env:USERPROFILE\sonar-scanner.zip"
+          Invoke-WebRequest -Uri $url -OutFile $zipPath
+          Expand-Archive -LiteralPath $zipPath -DestinationPath "$env:USERPROFILE\sonar-scanner"
+          echo "$env:USERPROFILE\sonar-scanner\sonar-scanner-5.0.1.3006-windows\bin" >> $env:GITHUB_PATH
 
       # Step 6: Run SonarQube Scan with Token Pre-flight Check
       - name: Run SonarQube Scan
+        shell: pwsh
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          # Pre-flight check: ensure SONAR_TOKEN is set
-          if [ -z "${SONAR_TOKEN}" ]; then
-            echo "ERROR: SONAR_TOKEN is not set! Please create a secret named SONAR_TOKEN in your GitHub repository settings."
+          if (-not $env:SONAR_TOKEN) {
+            Write-Error "ERROR: SONAR_TOKEN is not set! Please create a secret named SONAR_TOKEN in your GitHub repository settings."
             exit 1
-          fi
+          }
 
           # Run SonarQube scan
-          sonar-scanner \
-            -Dsonar.projectKey=my-project \
-            -Dsonar.sources=. \
-            -Dsonar.host.url=http://sonarqube.local \
-            -Dsonar.login=$SONAR_TOKEN
+          sonar-scanner.bat `
+            -Dsonar.projectKey=my-project `
+            -Dsonar.sources=. `
+            -Dsonar.host.url=http://sonarqube.local `
+            -Dsonar.login=$env:SONAR_TOKEN
