@@ -58,22 +58,22 @@ jobs:
           echo "$extractPath\sonar-scanner-5.0.1.3006-windows\bin" >> $env:GITHUB_PATH
 
       # Step 6: Run SonarQube Scan with Token Pre-flight Check
-    #   - name: Run SonarQube Scan
-    #     shell: pwsh
-    #     env:
-    #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    #     run: |
-    #       if (-not $env:SONAR_TOKEN) {
-    #         Write-Error "ERROR: SONAR_TOKEN is not set! Please create a secret named SONAR_TOKEN in your GitHub repository settings."
-    #         exit 1
-    #       }
+      - name: Run SonarQube Scan
+        shell: pwsh
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if (-not $env:SONAR_TOKEN) {
+            Write-Error "ERROR: SONAR_TOKEN is not set! Please create a secret named SONAR_TOKEN in your GitHub repository settings."
+            exit 1
+          }
 
-    #       # Run the scan
-    #       sonar-scanner.bat `
-    #         -Dsonar.projectKey=my-project `
-    #         -Dsonar.sources=. `
-    #         -Dsonar.host.url=http://localhost:9000 `
-    #         -Dsonar.login=$env:SONAR_TOKEN
+          # Run the scan
+          sonar-scanner.bat `
+            -Dsonar.projectKey=my-project `
+            -Dsonar.sources=. `
+            -Dsonar.host.url=http://localhost:9000 `
+            -Dsonar.login=$env:SONAR_TOKEN
 
     #   - name: Run SonarQube Scan
     #     shell: pwsh
