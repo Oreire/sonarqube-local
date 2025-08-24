@@ -9,46 +9,48 @@ jobs:
     runs-on: self-hosted
 
     steps:
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 1: Setup kubectl
+      # Step 2: Setup kubectl
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
 
-      # Step 2: Configure Kubernetes context for Docker Desktop
+      # Step 3: Configure Kubernetes context (Docker Desktop)
       - name: Configure Kubernetes Context
         run: |
           kubectl config use-context docker-desktop
           kubectl cluster-info
 
-      # Step 3: Deploy SonarQube (apply manifests)
+      # Step 4: Deploy SonarQube with Ingress
       - name: Deploy SonarQube
         run: |
-          kubectl apply -f Kube/sonar.yaml
-          kubectl rollout status deployment/sonarqube -n sonarqube --timeout=180s
+          kubectl apply -f k8s/sonarqube.yaml
+          kubectl rollout status deployment/sonarqube -n sonarqube --timeout=300s
 
-      # Step 4: Install Sonar Scanner
+      # Step 5: Install Sonar Scanner
       - name: Install Sonar Scanner
         run: |
           wget -qO- https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip | bsdtar -xvf- -C $HOME
           echo "$HOME/sonar-scanner-5.0.1.3006-linux/bin" >> $GITHUB_PATH
 
-      # Step 5: Run Sonar Scan
+      # Step 6: Run SonarQube Scan with Token Pre-flight Check
       - name: Run SonarQube Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          # Get the service NodePort to construct URL dynamically
-          SONAR_PORT=$(kubectl get svc sonarqube-service -n sonarqube -o jsonpath='{.spec.ports[0].nodePort}')
-          SONAR_HOST="http://localhost:$SONAR_PORT"
-          
-          echo "SonarQube available at $SONAR_HOST"
-          
+          # Pre-flight check: ensure SONAR_TOKEN is set
+          if [ -z "${SONAR_TOKEN}" ]; then
+            echo "ERROR: SONAR_TOKEN is not set! Please create a secret named SONAR_TOKEN in your GitHub repository settings."
+            exit 1
+          fi
+
+          # Run SonarQube scan
           sonar-scanner \
             -Dsonar.projectKey=my-project \
             -Dsonar.sources=. \
-            -Dsonar.host.url=$SONAR_HOST \
+            -Dsonar.host.url=http://sonarqube.local \
             -Dsonar.login=$SONAR_TOKEN
