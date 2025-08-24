@@ -32,3 +32,4 @@ The primary goal is to demonstrate how DevSecOps principles—such as early defe
 - [x] Static analysis results visible in SonarQube dashboard
 - [x] Reproducible across machines with Docker Desktop and K8s enabled
 
+ingress deployed manually
