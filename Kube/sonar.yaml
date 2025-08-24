@@ -43,6 +43,7 @@ spec:
       labels:
         app: sonarqube
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: sonarqube
           image: sonarqube:community
@@ -51,6 +52,15 @@ spec:
           env:
             - name: SONAR_ES_BOOTSTRAP_CHECKS
               value: "false"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+              ephemeral-storage: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "2Gi"
+              ephemeral-storage: "2Gi"
           volumeMounts:
             - name: sonarqube-data
               mountPath: /opt/sonarqube/data
