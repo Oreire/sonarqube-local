@@ -42,10 +42,10 @@ jobs:
       - name: Start SonarQube Port-Forward
         shell: pwsh
         run: |
-          Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 9191:9000"
+          Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 9393:9000"
 
           Start-Sleep -Seconds 10  # Wait for port-forward to establish
-          kubectl port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 9191:9000
+          kubectl port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 9393:9000
 
           # Step 5: Install Sonar Scanner (Windows) with folder cleanup
 
@@ -55,7 +55,7 @@ jobs:
             $maxAttempts = 10
             for ($i = 0; $i -lt $maxAttempts; $i++) {
              try {
-             $response = Invoke-WebRequest -Uri "http://localhost:9000/api/system/health" -UseBasicParsing
+             $response = Invoke-WebRequest -Uri "http://localhost:9393/api/system/health" -UseBasicParsing
             if ($response.StatusCode -eq 200) {
              Write-Host "SonarQube is ready"
              break
@@ -98,5 +98,5 @@ jobs:
             sonar-scanner `
             -D"sonar.projectKey=sonarqube-local" `
             -D"sonar.sources=." `
-            -D"sonar.host.url=http://localhost:9191" `
+            -D"sonar.host.url=http://localhost:9393" `
             -D"sonar.login=$env:SONAR_TOKEN"
