@@ -3,65 +3,62 @@ name: SonarQube CI/CD
 on:
   push:
     branches: [ main ]
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 jobs:
   deploy-and-scan:
+    name: Local SonarQube Deployment & Scan
     runs-on: self-hosted
 
     steps:
-      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Setup kubectl
       - name: Setup kubectl
         uses: azure/setup-kubectl@v3
         with:
           version: 'latest'
 
-      # Step 3: Configure Kubernetes context (Docker Desktop)
       - name: Configure Kubernetes Context
         shell: pwsh
         run: |
           kubectl config use-context docker-desktop
           kubectl cluster-info
 
-      # Step 4: Deploy SonarQube with Ingress
       - name: Deploy SonarQube
         shell: pwsh
         run: |
           kubectl apply -f Kube/sonar.yaml
           kubectl rollout status deployment/sonarqube -n sonarqube --timeout=300s
-    
+
       - name: Check SonarQube Pod Status
         shell: pwsh
         run: |
-            kubectl get pods -n sonarqube
-            kubectl get svc -n sonarqube
-      
+          kubectl get pods -n sonarqube
+          kubectl get svc -n sonarqube
+
       - name: Start SonarQube Port-Forward
         shell: pwsh
         run: |
           Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 10090:9000"
-          
-          # Step 5: Install Sonar Scanner (Windows) with folder cleanup
 
       - name: Wait for SonarQube to be reachable
         shell: pwsh
         run: |
-            $maxAttempts = 10
-            for ($i = 0; $i -lt $maxAttempts; $i++) {
-             try {
-             $response = Invoke-WebRequest -Uri "http://localhost:10090/api/system/health" -UseBasicParsing
-            if ($response.StatusCode -eq 200) {
-             Write-Host "SonarQube is ready"
-             break
-            }
+          $maxAttempts = 10
+          for ($i = 0; $i -lt $maxAttempts; $i++) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:10090/api/system/health" -UseBasicParsing
+              if ($response.StatusCode -eq 200) {
+                Write-Host "SonarQube is ready"
+                break
+              }
             } catch {
-            Write-Host "Waiting for SonarQube..."
-            Start-Sleep -Seconds 5
+              Write-Host "Waiting for SonarQube..."
+              Start-Sleep -Seconds 5
             }
-            }
+          }
 
       - name: Install Sonar Scanner
         shell: pwsh
@@ -70,20 +67,15 @@ jobs:
           $zipPath = "$env:USERPROFILE\sonar-scanner.zip"
           $extractPath = "$env:USERPROFILE\sonar-scanner"
 
-          # Remove previous installation if it exists
           if (Test-Path $extractPath) {
               Remove-Item -Recurse -Force $extractPath
           }
 
           Invoke-WebRequest -Uri $url -OutFile $zipPath
           Expand-Archive -LiteralPath $zipPath -DestinationPath $extractPath -Force
-
-          # Add to PATH for this workflow
           echo "$extractPath\sonar-scanner-5.0.1.3006-windows\bin" >> $env:GITHUB_PATH
 
-      # Step 6: Run SonarQube Scan with Token Pre-flight Check
-    
-      - name: Run SonarQube Scan
+      - name: Run Local SonarQube Scan
         shell: pwsh
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -92,8 +84,21 @@ jobs:
             throw "SONAR_TOKEN is not set"
           }
 
-            sonar-scanner `
+          sonar-scanner `
             -D"sonar.projectKey=sonarqube-local" `
             -D"sonar.sources=." `
             -D"sonar.host.url=http://localhost:10090" `
             -D"sonar.login=$env:SONAR_TOKEN"
+
+  cloud-scan:
+    name: SonarCloud Scan
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

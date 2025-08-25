@@ -33,3 +33,105 @@ The primary goal is to demonstrate how DevSecOps principles—such as early defe
 - [x] Reproducible across machines with Docker Desktop and K8s enabled
 
 ingress deployed manually
+Codes
+name: SonarQube CI/CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy-and-scan:
+    runs-on: self-hosted
+
+    steps:
+      # Step 1: Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Setup kubectl
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      # Step 3: Configure Kubernetes context (Docker Desktop)
+      - name: Configure Kubernetes Context
+        shell: pwsh
+        run: |
+          kubectl config use-context docker-desktop
+          kubectl cluster-info
+
+      # Step 4: Deploy SonarQube with Ingress
+      - name: Deploy SonarQube
+        shell: pwsh
+        run: |
+          kubectl apply -f Kube/sonar.yaml
+          kubectl rollout status deployment/sonarqube -n sonarqube --timeout=300s
+    
+      - name: Check SonarQube Pod Status
+        shell: pwsh
+        run: |
+            kubectl get pods -n sonarqube
+            kubectl get svc -n sonarqube
+      
+      - name: Start SonarQube Port-Forward
+        shell: pwsh
+        run: |
+          Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 10090:9000"
+          
+          # Step 5: Install Sonar Scanner (Windows) with folder cleanup
+
+      - name: Wait for SonarQube to be reachable
+        shell: pwsh
+        run: |
+            $maxAttempts = 10
+            for ($i = 0; $i -lt $maxAttempts; $i++) {
+             try {
+             $response = Invoke-WebRequest -Uri "http://localhost:10090/api/system/health" -UseBasicParsing
+            if ($response.StatusCode -eq 200) {
+             Write-Host "SonarQube is ready"
+             break
+            }
+            } catch {
+            Write-Host "Waiting for SonarQube..."
+            Start-Sleep -Seconds 5
+            }
+            }
+
+      - name: Install Sonar Scanner
+        shell: pwsh
+        run: |
+          $url = "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-windows.zip"
+          $zipPath = "$env:USERPROFILE\sonar-scanner.zip"
+          $extractPath = "$env:USERPROFILE\sonar-scanner"
+
+          # Remove previous installation if it exists
+          if (Test-Path $extractPath) {
+              Remove-Item -Recurse -Force $extractPath
+          }
+
+          Invoke-WebRequest -Uri $url -OutFile $zipPath
+          Expand-Archive -LiteralPath $zipPath -DestinationPath $extractPath -Force
+
+          # Add to PATH for this workflow
+          echo "$extractPath\sonar-scanner-5.0.1.3006-windows\bin" >> $env:GITHUB_PATH
+
+      # Step 6: Run SonarQube Scan with Token Pre-flight Check
+    
+      - name: Run SonarQube Scan
+        shell: pwsh
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          if (-not $env:SONAR_TOKEN) {
+            throw "SONAR_TOKEN is not set"
+          }
+
+            sonar-scanner `
+            -D"sonar.projectKey=sonarqube-local" `
+            -D"sonar.sources=." `
+            -D"sonar.host.url=http://localhost:10090" `
+            -D"sonar.login=$env:SONAR_TOKEN"
+
+            
