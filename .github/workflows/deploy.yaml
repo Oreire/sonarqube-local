@@ -39,6 +39,7 @@ jobs:
           Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 9000:9000"
 
           # Step 5: Install Sonar Scanner (Windows) with folder cleanup
+
       - name: Install Sonar Scanner
         shell: pwsh
         run: |
@@ -58,21 +59,34 @@ jobs:
           echo "$extractPath\sonar-scanner-5.0.1.3006-windows\bin" >> $env:GITHUB_PATH
 
       # Step 6: Run SonarQube Scan with Token Pre-flight Check
+    #   - name: Run SonarQube Scan
+    #     shell: pwsh
+    #     env:
+    #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    #     run: |
+    #       if (-not $env:SONAR_TOKEN) {
+    #         Write-Error "ERROR: SONAR_TOKEN is not set! Please create a secret named SONAR_TOKEN in your GitHub repository settings."
+    #         exit 1
+    #       }
+
+    #       # Run the scan
+    #       sonar-scanner.bat `
+    #         -D"sonar.projectKey=sonarqube-local" `
+    #         -D"sonar.sources=." `
+    #         -D"sonar.host.url=http://localhost:9000" `
+    #         -D"sonar.login=$env:SONAR_TOKEN"
+
       - name: Run SonarQube Scan
         shell: pwsh
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           if (-not $env:SONAR_TOKEN) {
-            Write-Error "ERROR: SONAR_TOKEN is not set! Please create a secret named SONAR_TOKEN in your GitHub repository settings."
-            exit 1
+            throw "SONAR_TOKEN is not set"
           }
 
-          # Run the scan
-          sonar-scanner.bat `
+            sonar-scanner `
             -D"sonar.projectKey=sonarqube-local" `
             -D"sonar.sources=." `
             -D"sonar.host.url=http://localhost:9000" `
             -D"sonar.login=$env:SONAR_TOKEN"
-
-    
