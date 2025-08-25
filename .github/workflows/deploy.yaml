@@ -38,7 +38,7 @@ jobs:
         run: |
           Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 9000:9000"
 
-      # Step 5: Install Sonar Scanner (Windows) with folder cleanup
+          # Step 5: Install Sonar Scanner (Windows) with folder cleanup
       - name: Install Sonar Scanner
         shell: pwsh
         run: |
