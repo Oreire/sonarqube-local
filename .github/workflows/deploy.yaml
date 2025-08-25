@@ -101,4 +101,15 @@ jobs:
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+            SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+            args: >
+                -Dsonar.projectKey=Oreire_sonarqube-local
+                -Dsonar.organization=oreire
+                -Dsonar.sources=.
+                -Dsonar.sourceEncoding=UTF-8
+
+    #   - name: SonarCloud Scan
+    #     uses: SonarSource/sonarqube-scan-action@v5
+    #     env:
+    #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
