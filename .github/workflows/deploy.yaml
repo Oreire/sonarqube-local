@@ -40,6 +40,23 @@ jobs:
 
           # Step 5: Install Sonar Scanner (Windows) with folder cleanup
 
+      - name: Wait for SonarQube to be reachable
+        shell: pwsh
+        run: |
+            $maxAttempts = 10
+            for ($i = 0; $i -lt $maxAttempts; $i++) {
+             try {
+             $response = Invoke-WebRequest -Uri "http://localhost:9000/api/system/health" -UseBasicParsing
+            if ($response.StatusCode -eq 200) {
+             Write-Host "SonarQube is ready"
+             break
+            }
+            } catch {
+            Write-Host "Waiting for SonarQube..."
+            Start-Sleep -Seconds 5
+            }
+            }
+
       - name: Install Sonar Scanner
         shell: pwsh
         run: |
@@ -59,23 +76,7 @@ jobs:
           echo "$extractPath\sonar-scanner-5.0.1.3006-windows\bin" >> $env:GITHUB_PATH
 
       # Step 6: Run SonarQube Scan with Token Pre-flight Check
-    #   - name: Run SonarQube Scan
-    #     shell: pwsh
-    #     env:
-    #       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    #     run: |
-    #       if (-not $env:SONAR_TOKEN) {
-    #         Write-Error "ERROR: SONAR_TOKEN is not set! Please create a secret named SONAR_TOKEN in your GitHub repository settings."
-    #         exit 1
-    #       }
-
-    #       # Run the scan
-    #       sonar-scanner.bat `
-    #         -D"sonar.projectKey=sonarqube-local" `
-    #         -D"sonar.sources=." `
-    #         -D"sonar.host.url=http://localhost:9000" `
-    #         -D"sonar.login=$env:SONAR_TOKEN"
-
+    
       - name: Run SonarQube Scan
         shell: pwsh
         env:
