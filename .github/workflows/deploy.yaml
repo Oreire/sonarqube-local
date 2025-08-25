@@ -38,12 +38,15 @@ jobs:
         run: |
             kubectl get pods -n sonarqube
             kubectl get svc -n sonarqube
-
+      
       - name: Start SonarQube Port-Forward
         shell: pwsh
         run: |
           Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 9000:9000"
 
+          Start-Sleep -Seconds 10  # Wait for port-forward to establish
+          kubectl port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 9000:9000
+          
           # Step 5: Install Sonar Scanner (Windows) with folder cleanup
 
       - name: Wait for SonarQube to be reachable
