@@ -41,7 +41,7 @@ jobs:
       - name: Start SonarQube Port-Forward
         shell: pwsh
         run: |
-          Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 10090:9000"
+          Start-Process -NoNewWindow -FilePath "kubectl" -ArgumentList "port-forward --address 127.0.0.1 service/sonarqube-service -n sonarqube 10091:9000"
 
       - name: Wait for SonarQube to be reachable
         shell: pwsh
@@ -49,7 +49,7 @@ jobs:
           $maxAttempts = 10
           for ($i = 0; $i -lt $maxAttempts; $i++) {
             try {
-              $response = Invoke-WebRequest -Uri "http://localhost:10090/api/system/health" -UseBasicParsing
+              $response = Invoke-WebRequest -Uri "http://localhost:10091/api/system/health" -UseBasicParsing
               if ($response.StatusCode -eq 200) {
                 Write-Host "SonarQube is ready"
                 break
@@ -87,7 +87,7 @@ jobs:
           sonar-scanner `
             -D"sonar.projectKey=sonarqube-local" `
             -D"sonar.sources=." `
-            -D"sonar.host.url=http://localhost:10090" `
+            -D"sonar.host.url=http://localhost:10091" `
             -D"sonar.login=$env:SONAR_TOKEN"
 
   cloud-scan:
