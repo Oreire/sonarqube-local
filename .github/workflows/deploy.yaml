@@ -32,6 +32,12 @@ jobs:
         run: |
           kubectl apply -f Kube/sonar.yaml
           kubectl rollout status deployment/sonarqube -n sonarqube --timeout=300s
+    
+      - name: Check SonarQube Pod Status
+        shell: pwsh
+        run: |
+            kubectl get pods -n sonarqube
+            kubectl get svc -n sonarqube
 
       - name: Start SonarQube Port-Forward
         shell: pwsh
